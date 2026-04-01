@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Machine Log / 机器记录</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Saira+Condensed:wght@400;600;700;800&family=Saira:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --white: #ffffff;
+    --surface: #ffffff;
+    --surface2: #f7f8fa;
+    --border: #d0d5dd;
+    --border-strong: #aab0bb;
+    --text: #111827;
+    --text2: #374151;
+    --muted: #6b7280;
+    --blue: #1a56db;
+    --blue-bg: #eff6ff;
+    --blue-border: #93c5fd;
+    --run: #15803d;
+    --run-bg: #f0fdf4;
+    --run-border: #4ade80;
+    --run-btn: #16a34a;
+    --stop: #b91c1c;
+    --stop-bg: #fff1f2;
+    --stop-border: #fca5a5;
+    --stop-btn: #dc2626;
+    --maint: #92400e;
+    --maint-bg: #fffbeb;
+    --maint-border: #fcd34d;
+    --maint-btn: #d97706;
+    --header: #1e293b;
+    --header-accent: #f59e0b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Saira', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 50px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--header);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 58px;
+    border-bottom: 3px solid var(--header-accent);
+  }
+  .header-brand { display: flex; align-items: center; gap: 10px; }
+  .header-badge {
+    background: var(--header-accent);
+    color: #000;
+    font-family: 'Saira Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .header-title {
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+  }
+  .header-sub { font-size: 10px; color: #94a3b8; margin-top: 1px; }
+  .clock {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--header-accent);
+    text-align: right;
+    line-height: 1.5;
+  }
+
+  /* ── STEP WRAPPER ── */
+  .step { display: none; padding: 16px; }
+  .step.active { display: block; }
+
+  .step-tag {
+    display: inline-block;
+    background: var(--blue);
+    color: #fff;
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+  .step-title {
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+    line-height: 1.1;
+  }
+  .step-sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+
+  /* ── OPERATOR CARDS ── */
+  .op-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .op-card {
+    background: var(--white);
+    border: 2.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .op-card:active {
+    border-color: var(--blue);
+    background: var(--blue-bg);
+    transform: scale(0.96);
+    box-shadow: 0 0 0 3px rgba(26,86,219,0.15);
+  }
+  .op-icon {
+    width: 46px; height: 46px;
+    background: var(--blue-bg);
+    border: 2px solid var(--blue-border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 10px;
+    font-size: 22px;
+  }
+  .op-name { font-weight: 700; font-size: 13px; color: var(--text); line-height: 1.3; }
+
+  /* ── LIVE STATUS PANEL ── */
+  .live-panel {
+    background: var(--white);
+    border: 2px solid var(--border-strong);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .live-panel-header {
+    background: var(--header);
+    padding: 9px 14px;
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--header-accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .live-dot { width: 8px; height: 8px; background: var(--run-btn); border-radius: 50%; animation: blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  .ls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 14px;
+    border-bottom: 1.5px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .ls-row:last-child { border-bottom: none; }
+  .ls-row:active { background: var(--blue-bg); }
+  .ls-name { font-family: 'Saira Condensed', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 1px; }
+  .ls-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── MACHINE BUTTONS ── */
+  .machine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .machine-btn {
+    background: var(--white);
+    border: 2.5px solid var(--blue-border);
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  .machine-btn:active {
+    border-color: var(--blue);
+    background: var(--blue-bg);
+    transform: scale(0.96);
+  }
+  .machine-num {
+    width: 44px; height: 44px;
+    background: var(--blue);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+    letter-spacing: 1px;
+  }
+  .machine-label { font-family: 'Saira Condensed', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: 1px; }
+  .machine-cn { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── STATUS BUTTONS ── */
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+
+  .status-btn {
+    border-radius: 12px;
+    padding: 20px 8px 16px;
+    text-align: center;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.15s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+  .status-btn:active { transform: scale(0.95); }
+  .status-btn .s-icon { font-size: 30px; margin-bottom: 8px; display: block; }
+  .status-btn .s-label { font-family: 'Saira Condensed', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 1px; display: block; }
+  .status-btn .s-cn { font-size: 11px; margin-top: 4px; display: block; opacity: 0.8; }
+
+  .s-run {
+    background: var(--run-bg);
+    border-color: var(--run-border);
+    color: var(--run);
+  }
+  .s-run.selected {
+    background: var(--run-btn);
+    border-color: var(--run);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(21,128,61,0.35);
+  }
+  .s-stop {
+    background: var(--stop-bg);
+    border-color: var(--stop-border);
+    color: var(--stop);
+  }
+  .s-stop.selected {
+    background: var(--stop-btn);
+    border-color: var(--stop);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(185,28,28,0.35);
+  }
+  .s-maint {
+    background: var(--maint-bg);
+    border-color: var(--maint-border);
+    color: var(--maint);
+  }
+  .s-maint.selected {
+    background: var(--maint-btn);
+    border-color: var(--maint);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(146,64,14,0.35);
+  }
+
+  /* ── FORM SECTION ── */
+  .form-section {
+    background: var(--white);
+    border: 2px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .form-section-title {
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--blue);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .field-group { margin-bottom: 14px; }
+  .field-group:last-child { margin-bottom: 0; }
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+    display: block;
+  }
+  .field-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Saira', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field-input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(26,86,219,0.12);
+    background: var(--white);
+  }
+  .field-select {
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+    background-color: var(--surface2);
+    padding-right: 38px; cursor: pointer;
+  }
+
+  /* OD row */
+  .od-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .od-converted {
+    background: var(--blue-bg);
+    border: 2px solid var(--blue-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .od-converted-label { font-size: 10px; font-weight: 600; color: var(--blue); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .od-converted-val { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; color: var(--blue); }
+
+  /* ── NEXT BUTTON ── */
+  .btn-next {
+    width: 100%;
+    background: var(--blue);
+    color: #fff;
+    border: 3px solid #1240a8;
+    border-radius: 12px;
+    padding: 15px;
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    cursor: pointer;
+    margin-top: 14px;
+    transition: all 0.15s;
+    box-shadow: 0 3px 10px rgba(26,86,219,0.3);
+  }
+  .btn-next:active { transform: scale(0.98); background: #1240a8; }
+
+  /* ── SUBMIT BUTTON ── */
+  .btn-submit {
+    width: 100%;
+    background: var(--run-btn);
+    color: #fff;
+    border: 3px solid var(--run);
+    border-radius: 12px;
+    padding: 16px;
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: all 0.15s;
+    box-shadow: 0 3px 12px rgba(21,128,61,0.3);
+  }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit:disabled { background: var(--border); border-color: var(--border-strong); color: var(--muted); cursor: not-allowed; box-shadow: none; }
+
+  /* ── BACK BUTTON ── */
+  .btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--white);
+    border: 2px solid var(--border-strong);
+    color: var(--text2);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    transition: all 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  }
+  .btn-back:active { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+
+  /* ── SECTION DIVIDER ── */
+  .section-div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .section-div::before, .section-div::after { content:''; flex:1; height:1.5px; background:var(--border); }
+
+  /* ── SUMMARY ── */
+  .summary-card {
+    background: var(--white);
+    border: 2px solid var(--border-strong);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .summary-header {
+    background: var(--header);
+    padding: 10px 14px;
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--header-accent);
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 14px;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-key { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .summary-val { font-weight: 700; font-size: 14px; text-align: right; max-width: 60%; }
+
+  /* ── STATUS BADGES ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border: 2px solid transparent;
+  }
+  .badge-run { background: var(--run-bg); color: var(--run); border-color: var(--run-border); }
+  .badge-stop { background: var(--stop-bg); color: var(--stop); border-color: var(--stop-border); }
+  .badge-maint { background: var(--maint-bg); color: var(--maint); border-color: var(--maint-border); }
+  .badge-none { background: var(--surface2); color: var(--muted); border-color: var(--border); }
+
+  /* ── SUCCESS ── */
+  .success-screen { text-align: center; padding: 50px 20px; }
+  .success-ring {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: var(--run-bg);
+    border: 4px solid var(--run-btn);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 44px;
+    color: var(--run-btn);
+    box-shadow: 0 0 0 8px rgba(21,128,61,0.1);
+    animation: popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+  @keyframes popIn { from{transform:scale(0.5);opacity:0} to{transform:scale(1);opacity:1} }
+  .success-title {
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--run);
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+  .success-sub { color: var(--muted); font-size: 14px; margin-bottom: 36px; line-height: 1.9; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--stop-btn);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 999;
+    transition: transform 0.3s;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(185,28,28,0.35);
+    border: 2px solid var(--stop-border);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-brand">
+    <div class="header-badge">SAW</div>
+    <div>
+      <div class="header-title">MACHINE LOG</div>
+      <div class="header-sub">机器状态记录系统</div>
+    </div>
+  </div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<!-- STEP 1: OPERATOR -->
+<div class="step active" id="step-operator">
+  <div class="step-tag">STEP 1 / 第一步</div>
+  <div class="step-title">Who Are You? / 你是谁？</div>
+  <div class="step-sub">Select your name to begin / 选择你的名字开始</div>
+  <div class="op-grid" id="operator-grid"></div>
+</div>
+
+<!-- STEP 2: MACHINE -->
+<div class="step" id="step-machine">
+  <button class="btn-back" onclick="goTo('step-operator')">← BACK / 返回</button>
+  <div class="step-tag">STEP 2 / 第二步</div>
+  <div class="step-title">Which Machine? / 哪台机器？</div>
+  <div class="step-sub">Tap to select machine / 点击选择机器</div>
+
+  <div class="live-panel">
+    <div class="live-panel-header">
+      <div class="live-dot"></div>
+      LIVE STATUS / 当前状态 — TAP TO SELECT / 点击选择
+    </div>
+    <div id="last-status-rows">
+      <div style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">Loading... / 加载中...</div>
+    </div>
+  </div>
+
+  <div class="section-div">OR SELECT BELOW / 或在下方选择</div>
+  <div class="machine-grid" id="machine-grid"></div>
+</div>
+
+<!-- STEP 3: STATUS -->
+<div class="step" id="step-status">
+  <button class="btn-back" onclick="goTo('step-machine')">← BACK / 返回</button>
+  <div class="step-tag">STEP 3 / 第三步</div>
+  <div class="step-title" id="status-step-title">Machine Status / 机器状态</div>
+  <div class="step-sub">Tap current status / 点击当前状态</div>
+
+  <div class="status-grid">
+    <div class="status-btn s-run" onclick="selectStatus('Running', this)">
+      <span class="s-icon">▶</span>
+      <span class="s-label">RUNNING</span>
+      <span class="s-cn">运行中</span>
+    </div>
+    <div class="status-btn s-stop" onclick="selectStatus('Stopped', this)">
+      <span class="s-icon">⏹</span>
+      <span class="s-label">STOPPED</span>
+      <span class="s-cn">已停止</span>
+    </div>
+    <div class="status-btn s-maint" onclick="selectStatus('Maintenance', this)">
+      <span class="s-icon">🔧</span>
+      <span class="s-label">MAINT</span>
+      <span class="s-cn">维护中</span>
+    </div>
+  </div>
+
+  <!-- RUNNING fields -->
+  <div id="running-fields" style="display:none;">
+    <div class="form-section">
+      <div class="form-section-title">📋 Job Details / 工作详情</div>
+
+      <div class="field-group">
+        <label class="field-label">Work Order No. / 工单号 (Optional)</label>
+        <input type="text" class="field-input" id="job-number-run" placeholder="e.g. WO-57877">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Material Grade / 材料牌号 *</label>
+        <select class="field-input field-select" id="material-grade" onchange="toggleOtherGrade(this)">
+          <option value="">-- Select / 选择牌号 --</option>
+          <option value="INC718">INC718 — Inconel 718</option>
+          <option value="INC925">INC925 — Inconel 925</option>
+          <option value="INC625">INC625 — Inconel 625</option>
+          <option value="S13Cr">S13Cr — Super 13Cr</option>
+          <option value="13Cr">13Cr — 13 Chrome</option>
+          <option value="9Cr">9Cr — 9 Chrome</option>
+          <option value="Other">Other / 其他</option>
+        </select>
+        <input type="text" class="field-input" id="material-grade-other" placeholder="Enter material grade / 输入材料牌号" style="display:none;margin-top:8px;">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">OD Size / 外径尺寸 *</label>
+        <div class="od-row">
+          <input type="number" class="field-input" id="od-mm" placeholder="Enter mm" step="0.01" min="0" oninput="convertOD()">
+          <div class="od-converted">
+            <div class="od-converted-label">Auto Inch / 英寸</div>
+            <div class="od-converted-val" id="od-inch-display">— "</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Quantity / 数量 (pcs) *</label>
+        <input type="number" class="field-input" id="quantity" placeholder="No. of pieces / 件数" min="1" step="1">
+      </div>
+    </div>
+    <button class="btn-next" onclick="proceedToConfirm()">NEXT / 下一步 →</button>
+  </div>
+
+  <!-- STOPPED / MAINT fields -->
+  <div id="extra-fields" style="display:none;">
+    <div class="form-section">
+      <div class="form-section-title">📋 Stop Details / 停机详情</div>
+      <div class="field-group">
+        <label class="field-label">Reason / 原因 *</label>
+        <select class="field-input field-select" id="reason-select">
+          <option value="">-- Select reason / 选择原因 --</option>
+          <option value="Job completed">Job completed / 工作完成</option>
+          <option value="Waiting for material">Waiting for material / 等待物料</option>
+          <option value="No job">No job / 无工单</option>
+          <option value="Blade/Tool change">Blade/Tool change / 换刀</option>
+          <option value="Machine breakdown">Machine breakdown / 机器故障</option>
+          <option value="Scheduled maintenance">Scheduled maintenance / 计划维护</option>
+          <option value="End of shift">End of shift / 下班</option>
+          <option value="Other">Other / 其他</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Work Order No. / 工单号 (Optional)</label>
+        <input type="text" class="field-input" id="job-number-stop" placeholder="e.g. WO-57877">
+      </div>
+    </div>
+    <button class="btn-next" onclick="proceedToConfirm()">NEXT / 下一步 →</button>
+  </div>
+</div>
+
+<!-- STEP 4: CONFIRM -->
+<div class="step" id="step-confirm">
+  <button class="btn-back" onclick="goTo('step-status')">← BACK / 返回</button>
+  <div class="step-tag">STEP 4 / 第四步</div>
+  <div class="step-title">Confirm / 确认提交</div>
+  <div class="step-sub">Verify before submitting / 提交前请确认</div>
+  <div class="summary-card">
+    <div class="summary-header">📋 ENTRY SUMMARY / 记录摘要</div>
+    <div id="summary-rows"></div>
+  </div>
+  <button class="btn-submit" id="submit-btn" onclick="submitLog()">✓ SUBMIT / 提交</button>
+</div>
+
+<!-- SUCCESS -->
+<div class="step" id="step-success">
+  <div class="success-screen">
+    <div class="success-ring">✓</div>
+    <div class="success-title">LOGGED!</div>
+    <div class="success-sub">Data saved successfully<br>数据已成功保存</div>
+    <button class="btn-submit" onclick="resetForm()" style="max-width:300px;margin:0 auto;display:block;">
+      + NEW ENTRY / 新记录
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────────
+const OPERATORS = [
+  "Tey Wei En", "Yin Bochuan", "Xue Baoli", "Wang Jian",
+  "Tong Xianhui", "Yao Yuqun", "Zhang Huilong", "Other"
+];
+const MACHINES = [
+  { id:"360",   name:"SAW 360",   cn:"锯机 360" },
+  { id:"460",   name:"SAW 460",   cn:"锯机 460" },
+  { id:"560",   name:"SAW 560",   cn:"锯机 560" },
+  { id:"530",   name:"SAW 530",   cn:"锯机 530" },
+  { id:"530-1", name:"SAW 530-1", cn:"锯机 530-1" },
+];
+const SUPABASE_URL      = "https://dlcoscgtfyeffcfycami.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsY29zY2d0ZnllZmZjZnljYW1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1OTA3MjQsImV4cCI6MjA5MDE2NjcyNH0.NqJp8P-6PcXWh1EzSnsX6EGFFFin9eRHiQ4KJaY4xjU";
+const TABLE_NAME        = "machine_logs";
+// ───────────────────────────────────────────────────────────────────
+
+const S_COLOR = { Running:'badge-run', Stopped:'badge-stop', Maintenance:'badge-maint' };
+const S_CN    = { Running:'运行中', Stopped:'已停止', Maintenance:'维护中' };
+const S_ICON  = { Running:'▶', Stopped:'⏹', Maintenance:'🔧' };
+
+let state = { operator:null, machine:null, status:null, reason:null, jobNumber:null, material:null, odMm:null, odInch:null, qty:null, timestamp:null };
+
+// Clock
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clock').innerHTML =
+    n.toLocaleDateString('en-MY',{day:'2-digit',month:'short'})+'<br>'+
+    n.toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+}
+setInterval(updateClock,1000); updateClock();
+
+// Toggle Other grade
+function toggleOtherGrade(sel) {
+  const other = document.getElementById('material-grade-other');
+  other.style.display = sel.value === 'Other' ? 'block' : 'none';
+  if (sel.value !== 'Other') other.value = '';
+}
+
+// OD conversion
+function convertOD() {
+  const mm = parseFloat(document.getElementById('od-mm').value);
+  const el = document.getElementById('od-inch-display');
+  if (!isNaN(mm) && mm > 0) {
+    state.odInch = parseFloat((mm/25.4).toFixed(4));
+    el.textContent = state.odInch + '"';
+  } else {
+    state.odInch = null;
+    el.textContent = '— "';
+  }
+}
+
+// Build operators
+document.getElementById('operator-grid').innerHTML = OPERATORS.map(name => `
+  <div class="op-card" onclick="pickOperator('${name}')">
+    <div class="op-icon">👤</div>
+    <div class="op-name">${name}</div>
+  </div>`).join('');
+
+function pickOperator(name) {
+  state.operator = name;
+  loadLastStatus();
+  goTo('step-machine');
+}
+
+// Build machines
+document.getElementById('machine-grid').innerHTML = MACHINES.map(m => `
+  <div class="machine-btn" onclick="pickMachine('${m.id}')">
+    <div class="machine-num">${m.id}</div>
+    <div>
+      <div class="machine-label">${m.name}</div>
+      <div class="machine-cn">${m.cn}</div>
+    </div>
+  </div>`).join('');
+
+function pickMachine(id) {
+  state.machine = MACHINES.find(m => m.id === id);
+  document.getElementById('status-step-title').textContent = state.machine.name + ' — Status / 状态';
+  resetStatusFields();
+  goTo('step-status');
+}
+
+// Load live status
+async function loadLastStatus() {
+  const container = document.getElementById('last-status-rows');
+  try {
+    const results = await Promise.all(MACHINES.map(m =>
+      fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}?machine_id=eq.${m.id}&order=logged_at.desc&limit=1&select=status,logged_at,operator`, {
+        headers:{ apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${SUPABASE_ANON_KEY}` }
+      }).then(r=>r.json()).then(rows=>({m, row:rows[0]||null}))
+    ));
+    container.innerHTML = results.map(({m, row}) => {
+      if (!row) return `
+        <div class="ls-row" onclick="pickMachine('${m.id}')">
+          <div><div class="ls-name">${m.name}</div><div class="ls-meta">No entry yet / 暂无记录</div></div>
+          <span class="badge badge-none">— —</span>
+        </div>`;
+      return `
+        <div class="ls-row" onclick="pickMachine('${m.id}')">
+          <div>
+            <div class="ls-name">${m.name}</div>
+            <div class="ls-meta">${timeAgo(new Date(row.logged_at))} · ${row.operator||'—'}</div>
+          </div>
+          <span class="badge ${S_COLOR[row.status]||'badge-none'}">${S_ICON[row.status]||''} ${row.status}</span>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = `<div style="padding:14px;color:var(--muted);font-size:12px;text-align:center;">Could not load / 无法加载</div>`;
+  }
+}
+
+function timeAgo(d) {
+  const m = Math.floor((Date.now()-d)/60000);
+  if (m<1) return 'Just now';
+  if (m<60) return m+'m ago';
+  const h = Math.floor(m/60);
+  if (h<24) return h+'h ago';
+  return d.toLocaleDateString('en-MY');
+}
+
+// Status selection
+function selectStatus(status, el) {
+  state.status = status;
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('running-fields').style.display = status==='Running' ? 'block' : 'none';
+  document.getElementById('extra-fields').style.display   = status!=='Running' ? 'block' : 'none';
+}
+
+function resetStatusFields() {
+  state.status=null; state.reason=null; state.jobNumber=null;
+  state.material=null; state.odMm=null; state.odInch=null; state.qty=null;
+  document.querySelectorAll('.status-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('running-fields').style.display='none';
+  document.getElementById('extra-fields').style.display='none';
+  ['job-number-run','job-number-stop','od-mm','quantity'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('material-grade').value='';
+  document.getElementById('material-grade-other').value='';
+  document.getElementById('material-grade-other').style.display='none';
+  document.getElementById('reason-select').value='';
+  document.getElementById('od-inch-display').textContent='— "';
+}
+
+// Confirm
+function proceedToConfirm() {
+  if (!state.status) { showToast('Please select a status / 请选择状态'); return; }
+  if (state.status === 'Running') {
+    let grade = document.getElementById('material-grade').value;
+    if (grade === 'Other') {
+      grade = document.getElementById('material-grade-other').value.trim();
+      if (!grade) { showToast('Please enter material grade / 请输入材料牌号'); return; }
+    }
+    const odMm  = document.getElementById('od-mm').value;
+    const qty   = document.getElementById('quantity').value;
+    if (!grade) { showToast('Please select material grade / 请选择材料牌号'); return; }
+    if (!odMm||parseFloat(odMm)<=0) { showToast('Please enter OD size / 请输入外径'); return; }
+    if (!qty||parseInt(qty)<=0) { showToast('Please enter quantity / 请输入数量'); return; }
+    state.material  = grade;
+    state.odMm      = parseFloat(odMm);
+    state.odInch    = parseFloat((state.odMm/25.4).toFixed(4));
+    state.qty       = parseInt(qty);
+    state.jobNumber = document.getElementById('job-number-run').value || null;
+    state.reason    = null;
+  } else {
+    const reason = document.getElementById('reason-select').value;
+    if (!reason) { showToast('Please select a reason / 请选择原因'); return; }
+    state.reason    = reason;
+    state.jobNumber = document.getElementById('job-number-stop').value || null;
+    state.material=null; state.odMm=null; state.odInch=null; state.qty=null;
+  }
+  buildSummary();
+  goTo('step-confirm');
+}
+
+function buildSummary() {
+  state.timestamp = new Date().toISOString();
+  const rows = [
+    ['Operator / 操作员', state.operator],
+    ['Machine / 机器', state.machine.name],
+    ['Status / 状态', `<span class="badge ${S_COLOR[state.status]}">${S_ICON[state.status]} ${state.status} ${S_CN[state.status]}</span>`],
+  ];
+  if (state.status === 'Running') {
+    if (state.jobNumber) rows.push(['Work Order / 工单号', state.jobNumber]);
+    rows.push(['Material / 材料', state.material]);
+    rows.push(['OD / 外径', `${state.odMm} mm = ${state.odInch}"`]);
+    rows.push(['Qty / 数量', `${state.qty} pcs`]);
+  } else {
+    rows.push(['Reason / 原因', state.reason]);
+    if (state.jobNumber) rows.push(['Work Order / 工单号', state.jobNumber]);
+  }
+  rows.push(['Time / 时间', new Date(state.timestamp).toLocaleString('en-MY')]);
+  document.getElementById('summary-rows').innerHTML = rows.map(([k,v])=>`
+    <div class="summary-row">
+      <span class="summary-key">${k}</span>
+      <span class="summary-val">${v}</span>
+    </div>`).join('');
+}
+
+async function submitLog() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled=true; btn.textContent='Saving... / 保存中...';
+  const payload = {
+    operator:state.operator, machine_id:state.machine.id,
+    machine_name:state.machine.name, status:state.status,
+    reason:state.reason||null, job_number:state.jobNumber||null,
+    material_grade:state.material||null, od_mm:state.odMm||null,
+    od_inch:state.odInch||null, quantity:state.qty||null,
+    logged_at:state.timestamp
+  };
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${SUPABASE_ANON_KEY}`, Prefer:'return=minimal' },
+      body:JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    goTo('step-success');
+  } catch(err) {
+    btn.disabled=false; btn.textContent='✓ SUBMIT / 提交';
+    showToast('❌ ' + err.message);
+  }
+}
+
+function goTo(id) {
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function resetForm() {
+  state={operator:null,machine:null,status:null,reason:null,jobNumber:null,material:null,odMm:null,odInch:null,qty:null,timestamp:null};
+  resetStatusFields();
+  document.getElementById('submit-btn').disabled=false;
+  document.getElementById('submit-btn').textContent='✓ SUBMIT / 提交';
+  goTo('step-operator');
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+</script>
+</body>
+</html>
